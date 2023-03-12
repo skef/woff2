@@ -45,7 +45,9 @@ struct Font {
     bool IsReused() const;
   };
   std::map<uint32_t, Table> tables;
+  bool preserve_table_order = false;
   std::vector<uint32_t> OutputOrderedTags() const;
+  bool operator()(uint32_t a, uint32_t b) const;
 
   Table* FindTable(uint32_t tag);
   const Table* FindTable(uint32_t tag) const;
@@ -68,7 +70,8 @@ bool ReadFont(const uint8_t* data, size_t len, Font* font);
 // Parses the font from the given data. Returns false on parsing failure or
 // buffer overflow. The font is valid only so long the input data pointer is
 // valid. Supports collections.
-bool ReadFontCollection(const uint8_t* data, size_t len, FontCollection* fonts);
+bool ReadFontCollection(const uint8_t* data, size_t len, FontCollection* fonts,
+                        bool preserve_table_order = false);
 
 // Returns the file size of the font.
 size_t FontFileSize(const Font& font);

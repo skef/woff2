@@ -28,6 +28,16 @@ const Font::Table* Font::FindTable(uint32_t tag) const {
   return it == tables.end() ? 0 : &it->second;
 }
 
+bool Font::operator()(uint32_t a, uint32_t b) const {
+    auto ta = tables.find(a);
+    if (ta == tables.end())
+        return false;
+    auto tb = tables.find(b);
+    if (tb == tables.end())
+        return false;
+    return ta->second.offset < tb->second.offset;
+}
+
 std::vector<uint32_t> Font::OutputOrderedTags() const {
   std::vector<uint32_t> output_order;
 
@@ -40,6 +50,8 @@ std::vector<uint32_t> Font::OutputOrderedTags() const {
     }
     output_order.push_back(table.tag);
   }
+  if (preserve_table_order)
+      std::sort(output_order.begin(), output_order.end(), *this);
 
   // Alphabetize then put loca immediately after glyf
   auto glyf_loc = std::find(output_order.begin(), output_order.end(),
@@ -133,7 +145,8 @@ bool ReadCollectionFont(Buffer* file, const uint8_t* data, size_t len,
 }
 
 bool ReadTrueTypeCollection(Buffer* file, const uint8_t* data, size_t len,
-                            FontCollection* font_collection) {
+                            FontCollection* font_collection,
+                            bool preserve_table_order) {
     uint32_t num_fonts;
 
     if (!file->ReadU32(&font_collection->header_version) ||
@@ -157,6 +170,7 @@ bool ReadTrueTypeCollection(Buffer* file, const uint8_t* data, size_t len,
     for (const auto offset : offsets) {
       file->set_offset(offset);
       Font& font = *font_it++;
+      font.preserve_table_order = preserve_table_order;
       if (!ReadCollectionFont(file, data, len, &font, &all_tables)) {
         return FONT_COMPRESSION_FAILURE();
       }
@@ -179,7 +193,8 @@ bool ReadFont(const uint8_t* data, size_t len, Font* font) {
 }
 
 bool ReadFontCollection(const uint8_t* data, size_t len,
-                        FontCollection* font_collection) {
+                        FontCollection* font_collection,
+                        bool preserve_table_order) {
   Buffer file(data, len);
 
   if (!file.ReadU32(&font_collection->flavor)) {
@@ -189,10 +204,12 @@ bool ReadFontCollection(const uint8_t* data, size_t len,
   if (font_collection->flavor != kTtcFontFlavor) {
     font_collection->fonts.resize(1);
     Font& font = font_collection->fonts[0];
+    font.preserve_table_order = preserve_table_order;
     font.flavor = font_collection->flavor;
     return ReadTrueTypeFont(&file, data, len, &font);
   }
-  return ReadTrueTypeCollection(&file, data, len, font_collection);
+  return ReadTrueTypeCollection(&file, data, len, font_collection,
+                                preserve_table_order);
 }
 
 size_t FontFileSize(const Font& font) {

@@ -215,7 +215,8 @@ bool ConvertTTFToWOFF2(const uint8_t *data, size_t length,
                        uint8_t *result, size_t *result_length,
                        const WOFF2Params& params) {
   FontCollection font_collection;
-  if (!ReadFontCollection(data, length, &font_collection)) {
+  if (!ReadFontCollection(data, length, &font_collection,
+                          params.preserve_table_order)) {
 #ifdef FONT_COMPRESSION_BIN
     fprintf(stderr, "Parsing of the input font failed.\n");
 #endif
